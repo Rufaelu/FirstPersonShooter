@@ -7,7 +7,7 @@ import (
 	"FirstPersonShooter/gogl"
 
 	"github.com/go-gl/gl/v3.3-core/gl"
-	// "github.com/go-gl/mathgl/mgl32"
+	"github.com/go-gl/mathgl/mgl32"
 	"github.com/veandco/go-sdl2/sdl"
 	// "FirstPersonShooter/menu"
 )
@@ -36,6 +36,7 @@ func main() {
 	window.GLCreateContext()
 	defer window.Destroy()
 	gl.Init()
+	gl.Enable(gl.DEPTH_TEST)
 	// if !menu.RunMainMenu(window) {
 	// 	return
 	// }
@@ -45,7 +46,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	texture := gogl.LoadTextureAlpha("./assets/te.png")
+	texture := gogl.LoadTextureAlpha("./assets/magic-star.png")
 
 	// vertices := []float32{
 	// 	0.5, 0.5, 0.0, 1.0, 1.0,
@@ -101,10 +102,11 @@ func main() {
 	// 	0, 1, 3,
 	// 	1, 2, 3,
 	// }
-	// cubePos := []mgl32.Vec3{
-	// 	mgl32.Vec3{0.0, 0.0, 0.0},
-	// 	mgl32.Vec3{2.0, 5.0, -10.0},
-	// }
+	cubePos := []mgl32.Vec3{
+		mgl32.Vec3{0.0, 0.0, 0.0},
+		mgl32.Vec3{2.0, 5.0, -10.0},
+		mgl32.Vec3{2.0, -5.0, -10.0},
+	}
 
 	gogl.GenBindBuffer(gl.ARRAY_BUFFER)
 	VAO := gogl.GenBindVertexArray()
@@ -120,7 +122,11 @@ func main() {
 	gl.EnableVertexAttribArray(1)
 	gogl.UnBindVertexArray()
 
-	var x float32 = 0.0
+	var x float32
+	var z float32
+	var y float32
+
+	keyboardState := sdl.GetKeyboardState()
 
 	for {
 		for event := sdl.PollEvent(); event != nil; event = sdl.PollEvent() {
@@ -130,34 +136,56 @@ func main() {
 			}
 		}
 		gl.ClearColor(0.0, 0.0, 0.0, 0.0)
-		gl.Clear(gl.COLOR_BUFFER_BIT)
+		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+		if keyboardState[sdl.SCANCODE_A] != 0 {
+			x = x + .01
+			// x -= .1
+		}
+		if keyboardState[sdl.SCANCODE_D] != 0 {
+			x = x - .01
+			// x += .1
+		}
+		if keyboardState[sdl.SCANCODE_UP] != 0 {
+			// z += .1
+			z = z + .01
+		}
+		if keyboardState[sdl.SCANCODE_DOWN] != 0 {
+			z = z - .01
+		}
+		if keyboardState[sdl.SCANCODE_S] != 0 {
+			y = y + .01
+		}
+		if keyboardState[sdl.SCANCODE_W] != 0 {
+			y = y - .01
+		}
 		// gogl.UseProgram(shaderProgram)
 		shaderProgram.Use()
-		shaderProgram.SetFloat("x", x)
-		shaderProgram.SetFloat("y", 0.0)
+		// shaderProgram.SetFloat("x", x)
+		// shaderProgram.SetFloat("y", 0.0)
 		gogl.BindTexture(texture)
 		gogl.BindVertexArray(VAO)
-		// projectionMatrix := mgl32.Perspective(mgl32.DegToRad(45.0), float32(width)/float32(height), 0.1, 100.0)
-		// viewMatrix := mgl32.Ident4()
-		// viewMatrix = mgl32.Translate3D(0.0, 0.0, -3.0)
-		// shaderProgram.SetMat4("projection", projectionMatrix)
-		// shaderProgram.SetMat4("view", viewMatrix)
-		// gogl.BindTexture(tex)
+		projectionMatrix := mgl32.Perspective(mgl32.DegToRad(45.0), float32(width)/float32(height), 0.1, 100.0)
+		viewMatrix := mgl32.Ident4()
+		viewMatrix = mgl32.Translate3D(x, y, z)
+		shaderProgram.SetMat4("projection", projectionMatrix)
+		shaderProgram.SetMat4("view", viewMatrix)
+		gogl.BindTexture(texture)
 
-		// for i,pos := range cubePos{
-		// 	modelMatrix:= mgl32.Ident4()
-		// 	modelMatrix = mgl32.Translate3D(pos.X(),pos.Y(),pos.Z()). Mul4(modelMatrix)
-		// 	// angle:= 20.0* float(i)
+		for i, pos := range cubePos {
+			modelMatrix := mgl32.Ident4()
+			angle := 20.0 * float32(i)
+			modelMatrix = mgl32.HomogRotate3D(mgl32.DegToRad(angle), mgl32.Vec3{1.0, .3, 0.5}).Mul4(modelMatrix)
+			modelMatrix = mgl32.Translate3D(pos.X(), pos.Y(), pos.Z()).Mul4(modelMatrix)
 
-		// 	shaderProgram.SetMat4("model",modelMatrix)
-		// }
+			shaderProgram.SetMat4("model", modelMatrix)
+			gl.DrawArrays(gl.TRIANGLES, 0, 36)
+		}
 
 		// gl.DrawArrays(gl.TRIANGLES, 0, 3)
 		// gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, gl.PtrOffset(0))
-		gl.DrawArrays(gl.TRIANGLES, 0, 36)
 		window.GLSwap()
 		shaderProgram.CheckShadersForChanges()
-		x += 0.1
+		// x += 0.1
 
 	}
 
